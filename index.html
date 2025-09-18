@@ -31,25 +31,18 @@
     button:hover {
       background: #5845c7;
     }
-    .toggle-button {
-      background: #4a90e2;
-      padding: 8px 12px;
-      margin: 8px 0 4px 0;
-      font-size: 13px;
-    }
-    .toggle-button:hover {
-      background: #357abd;
-    }
     .station {
       background: white;
       padding: 16px;
       margin-bottom: 20px;
       border-radius: 10px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      cursor: pointer;
     }
     .station h2 {
       margin-top: 0;
       color: #333;
+      user-select: none;
     }
     .metadata-item {
       background: #f4f4f4;
@@ -60,8 +53,8 @@
       white-space: pre-wrap;
       display: none; /* Hidden by default */
     }
-    .metadata-item.visible {
-      display: block; /* Show when toggled */
+    .station.active .metadata-item {
+      display: block; /* Show when station is active */
     }
     .empty {
       color: #777;
@@ -96,7 +89,7 @@
           throw new Error(`HTTP error! status: ${res.status}`);
         }
         const data = await res.json();
-        console.log("Received data:", data); // Log the response for debugging
+        console.log("Received data:", data);
 
         const container = document.getElementById("results");
         container.innerHTML = "";
@@ -109,26 +102,14 @@
         for (const [station, result] of Object.entries(data.stations)) {
           const stationDiv = document.createElement("div");
           stationDiv.className = "station";
+          stationDiv.onclick = () => stationDiv.classList.toggle("active");
           stationDiv.innerHTML = `<h2>${station}</h2>`;
 
           if (result && 'success' in result && result.success && Array.isArray(result.metadataList) && result.metadataList.length > 0) {
-            result.metadataList.forEach((item, index) => {
-              const toggleButton = document.createElement("button");
-              toggleButton.className = "toggle-button";
-              toggleButton.textContent = `Metadata ${index + 1} (Click to Show)`;
-              toggleButton.onclick = () => {
-                const itemDiv = toggleButton.nextSibling;
-                itemDiv.classList.toggle("visible");
-                toggleButton.textContent = itemDiv.classList.contains("visible")
-                  ? `Metadata ${index + 1} (Click to Hide)`
-                  : `Metadata ${index + 1} (Click to Show)`;
-              };
-
+            result.metadataList.forEach((item) => {
               const itemDiv = document.createElement("div");
               itemDiv.className = "metadata-item";
               itemDiv.textContent = JSON.stringify(item, null, 2);
-
-              stationDiv.appendChild(toggleButton);
               stationDiv.appendChild(itemDiv);
             });
           } else {
