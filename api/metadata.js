@@ -10,10 +10,14 @@ function parseMetadataString(metadataStr) {
 
   let fullTitle = titleMatch[1];
 
-  // Step 1: Decode escaped sequences (turn \" into ", \\ into \)
-  fullTitle = fullTitle.replace(/\\+"/g, '"').replace(/\\\\/g, '\\');
+  // 🔑 Step 1: Normalize escaped sequences
+  // Convert \" -> " and \\ -> \
+  fullTitle = fullTitle.replace(/\\\\/g, '\\').replace(/\\"/g, '"');
 
-  // Step 2: Patterns to split piece vs composer
+  // 🔑 Step 2: Trim trailing slashes or artifacts
+  fullTitle = fullTitle.replace(/\\$/g, '').trim();
+
+  // Step 3: Split into piece + composer
   const composerPatterns = [
     /(.+)-([A-Z][a-z]+(?:\s+van|\s+von|\s+de|\s+da|\s+del|\s+della)?\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)$/,
     /(.+)-([A-Z][a-z]+(?:\s+[A-Z][a-z]*)*(?:\s+[A-Z][a-z]+)*)$/,
@@ -42,6 +46,7 @@ function parseMetadataString(metadataStr) {
 
   return result;
 }
+
 
 module.exports = async function handler(req, res) {
   // Enable CORS
