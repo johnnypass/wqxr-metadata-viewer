@@ -67,6 +67,10 @@
       color: #777;
       font-style: italic;
     }
+    .debug {
+      color: #d32f2f;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
@@ -80,21 +84,25 @@
   </div>
 
   <div id="results"></div>
+  <div id="debug" class="debug"></div>
 
   <script>
     async function fetchMetadata() {
+      const debugDiv = document.getElementById("debug");
+      debugDiv.textContent = "Fetching metadata...";
       try {
-        // Replace with your backend endpoint
         const res = await fetch("/api/metadata");
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
         const data = await res.json();
-
         console.log("Received data:", data); // Log the response for debugging
 
         const container = document.getElementById("results");
         container.innerHTML = "";
 
         if (!data || typeof data !== 'object' || !('stations' in data)) {
-          container.innerHTML = `<p style="color:red;">Error: Unexpected data format</p>`;
+          debugDiv.textContent = "Error: Unexpected data format";
           return;
         }
 
@@ -105,7 +113,6 @@
 
           if (result && 'success' in result && result.success && Array.isArray(result.metadataList) && result.metadataList.length > 0) {
             result.metadataList.forEach((item, index) => {
-              // Create toggle button
               const toggleButton = document.createElement("button");
               toggleButton.className = "toggle-button";
               toggleButton.textContent = `Metadata ${index + 1} (Click to Show)`;
@@ -117,7 +124,6 @@
                   : `Metadata ${index + 1} (Click to Show)`;
               };
 
-              // Create metadata item
               const itemDiv = document.createElement("div");
               itemDiv.className = "metadata-item";
               itemDiv.textContent = JSON.stringify(item, null, 2);
@@ -134,10 +140,12 @@
 
           container.appendChild(stationDiv);
         }
+        debugDiv.textContent = "Fetch successful";
       } catch (err) {
         console.error("Fetch error:", err);
         document.getElementById("results").innerHTML =
           `<p style="color:red;">Error fetching metadata: ${err.message}</p>`;
+        debugDiv.textContent = `Error: ${err.message}`;
       }
     }
 
@@ -145,14 +153,21 @@
     const autoRefreshCheckbox = document.getElementById("autoRefresh");
     let intervalId;
     autoRefreshCheckbox.addEventListener("change", (e) => {
+      console.log("Auto-refresh checkbox changed to:", e.target.checked);
       if (e.target.checked) {
-        intervalId = setInterval(fetchMetadata, 30000);
+        intervalId = setInterval(() => {
+          console.log("Auto-refresh triggered at", new Date().toLocaleTimeString());
+          fetchMetadata();
+        }, 30000);
+        debugDiv.textContent = "Auto-refresh started";
       } else {
         clearInterval(intervalId);
+        debugDiv.textContent = "Auto-refresh stopped";
       }
     });
 
     // Initial load
+    console.log("Initial load at", new Date().toLocaleTimeString());
     fetchMetadata();
   </script>
 </body>
