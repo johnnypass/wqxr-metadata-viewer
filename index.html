@@ -336,10 +336,50 @@
             return new Date(unixTimestamp * 1000).toLocaleString();
         }
 
+        function parseMetadataString(metadataStr) {
+            // Parse strings like: title="Four Seasons: L'autunno (Autumn) in F, Op. 8/3-Antonio Vivaldi"
+            const result = {};
+            
+            if (!metadataStr) return result;
+            
+            // Extract title from title="..." format
+            const titleMatch = metadataStr.match(/title="([^"]+)"/);
+            if (titleMatch) {
+                const fullTitle = titleMatch[1];
+                
+                // Try to split composer and piece (look for common patterns)
+                const patterns = [
+                    /^(.+?)-([^-]+)$/, // "Piece-Composer"
+                    /^(.+?) - ([^-]+)$/, // "Piece - Composer" 
+                    /^(.+?)\s*-\s*(.+)$/ // "Piece - Composer" with flexible spacing
+                ];
+                
+                let piece = fullTitle;
+                let composer = '';
+                
+                for (const pattern of patterns) {
+                    const match = fullTitle.match(pattern);
+                    if (match && match[2] && match[2].length > 2) {
+                        piece = match[1].trim();
+                        composer = match[2].trim();
+                        break;
+                    }
+                }
+                
+                result.title = piece;
+                if (composer) result.composer = composer;
+            }
+            
+            return result;
+        }
+
         function renderMetadata(data) {
             const container = document.getElementById('metadataContent');
             
-            if (!data || data.length === 0) {
+            // The data is nested in metadataList
+            const metadataList = data?.metadataList || [];
+            
+            if (!metadataList || metadataList.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
                         <svg viewBox="0 0 24 24" fill="currentColor">
@@ -352,30 +392,55 @@
                 return;
             }
 
-            const html = data.map(item => {
-                const fields = Object.keys(item)
-                    .filter(key => key !== 'timestamp')
-                    .map(key => {
-                        if (item[key] && item[key] !== '') {
-                            return `
-                                <div class="metadata-field">
-                                    <strong>${key.replace(/_/g, ' ')}</strong>
-                                    <span>${item[key]}</span>
-                                </div>
-                            `;
-                        }
-                        return '';
-                    })
-                    .filter(field => field !== '')
-                    .join('');
+            const html = metadataList.map(item => {
+                const parsedMetadata = parseMetadataString(item.metadata);
+                const timestamp = item.timestamp;
+                
+                let fields = '';
+                
+                if (parsedMetadata.title) {
+                    fields += `
+                        <div class="metadata-field">
+                            <strong>Title</strong>
+                            <span>${parsedMetadata.title}</span>
+                        </div>
+                    `;
+                }
+                
+                if (parsedMetadata.composer) {
+                    fields += `
+                        <div class="metadata-field">
+                            <strong>Composer</strong>
+                            <span>${parsedMetadata.composer}</span>
+                        </div>
+                    `;
+                }
+                
+                if (item.node) {
+                    fields += `
+                        <div class="metadata-field">
+                            <strong>Source</strong>
+                            <span>${item.node}</span>
+                        </div>
+                    `;
+                }
+                
+                if (item.mount) {
+                    fields += `
+                        <div class="metadata-field">
+                            <strong>Stream</strong>
+                            <span>${item.mount}</span>
+                        </div>
+                    `;
+                }
 
                 return `
                     <div class="metadata-item">
                         <div class="metadata-time">
-                            ${item.timestamp ? formatTimestamp(item.timestamp) : 'Unknown time'}
+                            ${timestamp || 'Unknown time'}
                         </div>
                         <div class="metadata-content">
-                            ${fields || '<div class="metadata-field"><strong>No data</strong><span>No metadata available</span></div>'}
+                            ${fields || '<div class="metadata-field"><strong>Raw</strong><span>' + (item.metadata || 'No data') + '</span></div>'}
                         </div>
                     </div>
                 `;
@@ -411,8 +476,10 @@
                     throw new Error(result.error);
                 }
                 
-                showStatus(`Successfully loaded ${result.metadata.count} metadata entries`, 'success');
-                renderMetadata(Array.isArray(result.data) ? result.data : [result.data]);
+                // The data structure is result.data.metadataList
+                const count = result.data?.metadataList?.length || 0;
+                showStatus(`Successfully loaded ${count} metadata entries`, 'success');
+                renderMetadata(result.data);
                 
                 setTimeout(hideStatus, 3000);
             } catch (error) {
