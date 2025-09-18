@@ -20,11 +20,22 @@ module.exports = async function handler(req, res) {
     console.log('🎵 Fetching metadata from multiple stations...');
 
     const { start, stop } = req.query;
-    const now = Math.floor(Date.now() / 1000);
-    const startTime = start || (now - 3600);
-    const stopTime = stop || now;
+    const now = Math.floor(Date.now() / 1000); // Current time in epoch seconds
 
-    console.log(`📅 Time range: ${startTime} to ${stopTime}`);
+    // Convert start and stop to numbers, defaulting to 1 hour ago and now if not provided
+    const startTime = start ? parseInt(start, 10) : (now - 3600);
+    const stopTime = stop ? parseInt(stop, 10) : now;
+
+    // Validate time range (max 72 hours = 259,200 seconds)
+    const duration = stopTime - startTime;
+    if (duration > 259200) {
+      throw new Error('Time interval exceeds 72-hour limit');
+    }
+    if (startTime > stopTime) {
+      throw new Error('Start time must be before stop time');
+    }
+
+    console.log(`📅 Time range: ${startTime} to ${stopTime} (duration: ${duration}s)`);
 
     if (!process.env.WQXR_API_KEY) {
       throw new Error('WQXR_API_KEY environment variable not configured');
