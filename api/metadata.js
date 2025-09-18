@@ -1,4 +1,4 @@
-// api/metadata.js - Vercel Serverless Function (Uses built-in fetch)
+// api/metadata.js - Vercel Serverless Functions (Uses built-in fetch)
 module.exports = async function handler(req, res) {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
