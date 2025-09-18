@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WQXR Metadata Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            color: #4a5568;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #718096;
+            font-size: 1.1rem;
+        }
+
+        .deploy-info {
+            background: #e6f7e6;
+            border: 2px solid #28a745;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .deploy-info h3 {
+            color: #28a745;
+            margin-bottom: 10px;
+        }
+
+        .deploy-info p {
+            color: #155724;
+            font-size: 0.95rem;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status {
+            text-align: center;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .status.loading {
+            background: #e6f3ff;
+            color: #0066cc;
+            border: 2px solid #b3d9ff;
+        }
+
+        .status.success {
+            background: #e6f7e6;
+            color: #009900;
+            border: 2px solid #b3e6b3;
+        }
+
+        .status.error {
+            background: #ffe6e6;
+            color: #cc0000;
+            border: 2px solid #ffb3b3;
+        }
+
+        .time-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .time-info h3 {
+            color: #4a5568;
+            margin-bottom: 10px;
+        }
+
+        .time-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .time-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .metadata-container {
+            background: #fff;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .metadata-item {
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+            transition: background-color 0.2s ease;
+        }
+
+        .metadata-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .metadata-item:last-child {
+            border-bottom: none;
+        }
+
+        .metadata-time {
+            font-size: 0.9rem;
+            color: #718096;
+            margin-bottom: 8px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .metadata-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .metadata-field {
+            background: #f7fafc;
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 3px solid #667eea;
+        }
+
+        .metadata-field strong {
+            display: block;
+            color: #4a5568;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .metadata-field span {
+            color: #2d3748;
+            font-weight: 500;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #718096;
+        }
+
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .metadata-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .auto-refresh {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+            color: #718096;
+        }
+
+        .auto-refresh input {
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎵 WQXR Metadata Viewer</h1>
+            <p>Real-time metadata from WQXR Classical Radio</p>
+        </div>
+
+        <div class="deploy-info">
+            <h3>🚀 Deployed with Vercel</h3>
+            <p>API key is securely stored on the server. No need to enter credentials!</p>
+        </div>
+
+        <div class="controls">
+            <button id="fetchBtn" onclick="fetchMetadata()">Fetch Latest Metadata</button>
+            <button id="refreshBtn" onclick="location.reload()">Refresh Page</button>
+            <div class="auto-refresh">
+                <input type="checkbox" id="autoRefresh" onchange="toggleAutoRefresh()">
+                <label for="autoRefresh">Auto-refresh every 30 seconds</label>
+            </div>
+        </div>
+
+        <div id="status" class="status" style="display: none;"></div>
+
+        <div class="time-info">
+            <h3>Query Time Range</h3>
+            <div class="time-row">
+                <span>Start (1 hour ago):</span>
+                <span id="startTime">-</span>
+            </div>
+            <div class="time-row">
+                <span>End (now):</span>
+                <span id="endTime">-</span>
+            </div>
+            <div class="time-row">
+                <span>Unix Start:</span>
+                <span id="startUnix">-</span>
+            </div>
+            <div class="time-row">
+                <span>Unix End:</span>
+                <span id="endUnix">-</span>
+            </div>
+        </div>
+
+        <div class="metadata-container">
+            <div id="metadataContent">
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                    <h3>No metadata loaded yet</h3>
+                    <p>Click "Fetch Latest Metadata" to load the most recent hour of WQXR metadata</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let autoRefreshInterval;
+
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+        }
+
+        function hideStatus() {
+            document.getElementById('status').style.display = 'none';
+        }
+
+        function updateTimeInfo() {
+            const now = Math.floor(Date.now() / 1000);
+            const oneHourAgo = now - 3600;
+
+            const startDate = new Date(oneHourAgo * 1000);
+            const endDate = new Date(now * 1000);
+
+            document.getElementById('startTime').textContent = startDate.toLocaleString();
+            document.getElementById('endTime').textContent = endDate.toLocaleString();
+            document.getElementById('startUnix').textContent = oneHourAgo;
+            document.getElementById('endUnix').textContent = now;
+        }
+
+        function formatTimestamp(unixTimestamp) {
+            return new Date(unixTimestamp * 1000).toLocaleString();
+        }
+
+        function renderMetadata(data) {
+            const container = document.getElementById('metadataContent');
+            
+            if (!data || data.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+                        </svg>
+                        <h3>No metadata found</h3>
+                        <p>No metadata entries were found for the past hour</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const html = data.map(item => {
+                const fields = Object.keys(item)
+                    .filter(key => key !== 'timestamp')
+                    .map(key => {
+                        if (item[key] && item[key] !== '') {
+                            return `
+                                <div class="metadata-field">
+                                    <strong>${key.replace(/_/g, ' ')}</strong>
+                                    <span>${item[key]}</span>
+                                </div>
+                            `;
+                        }
+                        return '';
+                    })
+                    .filter(field => field !== '')
+                    .join('');
+
+                return `
+                    <div class="metadata-item">
+                        <div class="metadata-time">
+                            ${item.timestamp ? formatTimestamp(item.timestamp) : 'Unknown time'}
+                        </div>
+                        <div class="metadata-content">
+                            ${fields || '<div class="metadata-field"><strong>No data</strong><span>No metadata available</span></div>'}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = html;
+        }
+
+        async function fetchMetadata() {
+            const fetchBtn = document.getElementById('fetchBtn');
+            
+            fetchBtn.disabled = true;
+            fetchBtn.textContent = 'Fetching...';
+            
+            showStatus('Fetching metadata from WQXR via Vercel...', 'loading');
+            updateTimeInfo();
+
+            try {
+                const now = Math.floor(Date.now() / 1000);
+                const oneHourAgo = now - 3600;
+                
+                // Call our Vercel serverless function
+                const response = await fetch(`/api/metadata?start=${oneHourAgo}&stop=${now}`);
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                
+                if (!result.success) {
+                    throw new Error(result.error);
+                }
+                
+                showStatus(`Successfully loaded ${result.metadata.count} metadata entries`, 'success');
+                renderMetadata(Array.isArray(result.data) ? result.data : [result.data]);
+                
+                setTimeout(hideStatus, 3000);
+            } catch (error) {
+                console.error('Fetch error:', error);
+                showStatus(`Error: ${error.message}`, 'error');
+            } finally {
+                fetchBtn.disabled = false;
+                fetchBtn.textContent = 'Fetch Latest Metadata';
+            }
+        }
+
+        function toggleAutoRefresh() {
+            const checkbox = document.getElementById('autoRefresh');
+            
+            if (checkbox.checked) {
+                fetchMetadata(); // Initial fetch
+                autoRefreshInterval = setInterval(fetchMetadata, 30000); // Every 30 seconds
+                showStatus('Auto-refresh enabled (every 30 seconds)', 'success');
+                setTimeout(hideStatus, 2000);
+            } else {
+                if (autoRefreshInterval) {
+                    clearInterval(autoRefreshInterval);
+                    autoRefreshInterval = null;
+                }
+                showStatus('Auto-refresh disabled', 'success');
+                setTimeout(hideStatus, 2000);
+            }
+        }
+
+        // Initialize time info on page load
+        updateTimeInfo();
+        
+        // Update time info every second
+        setInterval(updateTimeInfo, 1000);
+    </script>
+</body>
+</html>
