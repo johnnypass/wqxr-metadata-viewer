@@ -31,6 +31,15 @@
     button:hover {
       background: #5845c7;
     }
+    .toggle-button {
+      background: #4a90e2;
+      padding: 8px 12px;
+      margin: 8px 0 4px 0;
+      font-size: 13px;
+    }
+    .toggle-button:hover {
+      background: #357abd;
+    }
     .station {
       background: white;
       padding: 16px;
@@ -45,10 +54,14 @@
     .metadata-item {
       background: #f4f4f4;
       padding: 10px;
-      margin: 8px 0;
+      margin: 4px 0;
       border-radius: 6px;
       font-family: monospace;
       white-space: pre-wrap;
+      display: none; /* Hidden by default */
+    }
+    .metadata-item.visible {
+      display: block; /* Show when toggled */
     }
     .empty {
       color: #777;
@@ -75,11 +88,13 @@
         const res = await fetch("/api/metadata");
         const data = await res.json();
 
+        console.log("Received data:", data); // Log the response for debugging
+
         const container = document.getElementById("results");
         container.innerHTML = "";
 
-        if (!data.success) {
-          container.innerHTML = `<p style="color:red;">Error: ${data.error}</p>`;
+        if (!data || typeof data !== 'object' || !('stations' in data)) {
+          container.innerHTML = `<p style="color:red;">Error: Unexpected data format</p>`;
           return;
         }
 
@@ -88,11 +103,26 @@
           stationDiv.className = "station";
           stationDiv.innerHTML = `<h2>${station}</h2>`;
 
-          if (result.success && result.metadataList.length > 0) {
-            result.metadataList.forEach(item => {
+          if (result && 'success' in result && result.success && Array.isArray(result.metadataList) && result.metadataList.length > 0) {
+            result.metadataList.forEach((item, index) => {
+              // Create toggle button
+              const toggleButton = document.createElement("button");
+              toggleButton.className = "toggle-button";
+              toggleButton.textContent = `Metadata ${index + 1} (Click to Show)`;
+              toggleButton.onclick = () => {
+                const itemDiv = toggleButton.nextSibling;
+                itemDiv.classList.toggle("visible");
+                toggleButton.textContent = itemDiv.classList.contains("visible")
+                  ? `Metadata ${index + 1} (Click to Hide)`
+                  : `Metadata ${index + 1} (Click to Show)`;
+              };
+
+              // Create metadata item
               const itemDiv = document.createElement("div");
               itemDiv.className = "metadata-item";
               itemDiv.textContent = JSON.stringify(item, null, 2);
+
+              stationDiv.appendChild(toggleButton);
               stationDiv.appendChild(itemDiv);
             });
           } else {
@@ -105,7 +135,7 @@
           container.appendChild(stationDiv);
         }
       } catch (err) {
-        console.error(err);
+        console.error("Fetch error:", err);
         document.getElementById("results").innerHTML =
           `<p style="color:red;">Error fetching metadata: ${err.message}</p>`;
       }
