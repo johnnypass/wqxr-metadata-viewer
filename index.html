@@ -132,20 +132,31 @@
 
     // Auto-refresh
     const autoRefreshCheckbox = document.getElementById("autoRefresh");
-    let intervalId;
-    autoRefreshCheckbox.addEventListener("change", (e) => {
-      console.log("Auto-refresh checkbox changed to:", e.target.checked);
-      if (e.target.checked) {
-        intervalId = setInterval(() => {
-          console.log("Auto-refresh triggered at", new Date().toLocaleTimeString());
-          fetchMetadata();
-        }, 30000);
-        debugDiv.textContent = "Auto-refresh started";
-      } else {
-        clearInterval(intervalId);
-        debugDiv.textContent = "Auto-refresh stopped";
-      }
-    });
+    let intervalId = null; // Explicitly initialize to null
+    if (!autoRefreshCheckbox) {
+      console.error("Auto-refresh checkbox not found!");
+    } else {
+      autoRefreshCheckbox.addEventListener("change", (e) => {
+        const debugDiv = document.getElementById("debug");
+        console.log("Auto-refresh checkbox changed to:", e.target.checked);
+        if (e.target.checked) {
+          if (intervalId) clearInterval(intervalId); // Clear any existing interval
+          intervalId = setInterval(() => {
+            console.log("Auto-refresh triggered at", new Date().toLocaleTimeString());
+            fetchMetadata();
+          }, 30000);
+          debugDiv.textContent = "Auto-refresh started";
+          console.log("Auto-refresh interval set, ID:", intervalId);
+        } else {
+          if (intervalId) {
+            clearInterval(intervalId);
+            intervalId = null;
+          }
+          debugDiv.textContent = "Auto-refresh stopped";
+          console.log("Auto-refresh cleared");
+        }
+      });
+    }
 
     // Initial load
     console.log("Initial load at", new Date().toLocaleTimeString());
