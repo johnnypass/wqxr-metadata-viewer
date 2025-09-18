@@ -1,5 +1,4 @@
-// api/metadata.js
-
+// api/metadata.js - Vercel Serverless Functions
 module.exports = async function handler(req, res) {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -18,46 +17,62 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    console.log('🎵 Fetching WQXR metadata...');
-    
+    console.log('🎵 Fetching metadata from multiple stations...');
+
     const { start, stop } = req.query;
     const now = Math.floor(Date.now() / 1000);
     const startTime = start || (now - 3600);
     const stopTime = stop || now;
 
+    console.log(`📅 Time range: ${startTime} to ${stopTime}`);
+
     if (!process.env.WQXR_API_KEY) {
       throw new Error('WQXR_API_KEY environment variable not configured');
     }
 
-    const apiUrl = `https://sbfl-prod-us-east-2-public-api-gateway.streaming.adswizz.com/wnyc/stations/wqxr/metadata-monitoring?start=${startTime}&stop=${stopTime}`;
-    
-    const response = await fetch(apiUrl, {
-      method: 'GET',
-      headers: {
-        'x-api-key': process.env.WQXR_API_KEY,
-        'Content-Type': 'application/json',
-        'User-Agent': 'WQXR-Metadata-Viewer/1.0'
+    // Stations to fetch
+    const stations = [
+      { id: 'wqxr', name: 'WQXR' },
+      { id: 'wnyc', name: 'WNYC' },
+      { id: 'tunein-test', name: 'TuneIn Test' }
+    ];
+
+    // Build API calls
+    const fetches = stations.map(station => {
+      const url = `https://sbfl-prod-us-east-2-public-api-gateway.streaming.adswizz.com/wnyc/stations/${station.id}/metadata-monitoring?start=${startTime}&stop=${stopTime}`;
+      console.log(`🌐 Fetching: ${url}`);
+
+      return fetch(url, {
+        method: 'GET',
+        headers: {
+          'x-api-key': process.env.WQXR_API_KEY,
+          'Content-Type': 'application/json',
+          'User-Agent': 'Metadata-Viewer/1.0'
+        }
+      })
+        .then(resp => resp.ok ? resp.json() : Promise.reject(new Error(`${station.name} API error: ${resp.status}`)))
+        .then(data => ({ station: station.name, data }))
+        .catch(err => ({ station: station.name, error: err.message }));
+    });
+
+    const results = await Promise.all(fetches);
+
+    const merged = {};
+    results.forEach(r => {
+      if (r.error) {
+        merged[r.station] = { success: false, error: r.error };
+      } else {
+        merged[r.station] = { success: true, metadataList: r.data?.metadataList || [] };
       }
     });
 
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => 'Unknown error');
-      throw new Error(`WQXR API returned ${response.status}: ${errorText}`);
-    }
-
-    const data = await response.json();
-    const count = Array.isArray(data) ? data.length : (data ? 1 : 0);
-
-    // 🚀 Return the raw JSON, pretty-printed
     return res.status(200).json({
       success: true,
-      data: data, // keep raw
+      stations: merged,
       metadata: {
         start: startTime,
         stop: stopTime,
-        count: count,
-        timestamp: new Date().toISOString(),
-        duration_hours: Math.round((stopTime - startTime) / 3600 * 100) / 100
+        timestamp: new Date().toISOString()
       }
     });
 
