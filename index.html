@@ -47,25 +47,6 @@
             font-size: 1.1rem;
         }
 
-        .deploy-info {
-            background: #e6f7e6;
-            border: 2px solid #28a745;
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 30px;
-            text-align: center;
-        }
-
-        .deploy-info h3 {
-            color: #28a745;
-            margin-bottom: 10px;
-        }
-
-        .deploy-info p {
-            color: #155724;
-            font-size: 0.95rem;
-        }
-
         .controls {
             display: flex;
             justify-content: center;
@@ -176,31 +157,13 @@
             font-family: 'Courier New', monospace;
         }
 
-        .metadata-content {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 15px;
-        }
-
-        .metadata-field {
+        pre {
             background: #f7fafc;
             padding: 12px;
             border-radius: 8px;
             border-left: 3px solid #667eea;
-        }
-
-        .metadata-field strong {
-            display: block;
-            color: #4a5568;
-            font-size: 0.85rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 4px;
-        }
-
-        .metadata-field span {
-            color: #2d3748;
-            font-weight: 500;
+            overflow-x: auto;
+            font-size: 0.9rem;
         }
 
         .empty-state {
@@ -229,10 +192,6 @@
             .controls {
                 flex-direction: column;
                 align-items: center;
-            }
-
-            .metadata-content {
-                grid-template-columns: 1fr;
             }
         }
 
@@ -291,7 +250,9 @@
             <div id="metadataContent">
                 <div class="empty-state">
                     <svg viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 
+                        10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 
+                        1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
                     </svg>
                     <h3>No metadata loaded yet</h3>
                     <p>Click "Fetch Latest Metadata" to load the most recent hour of WQXR metadata</p>
@@ -327,58 +288,16 @@
             document.getElementById('endUnix').textContent = now;
         }
 
-        function formatTimestamp(unixTimestamp) {
-            return new Date(unixTimestamp * 1000).toLocaleString();
-        }
-
-        function parseMetadataString(metadataStr) {
-            // Parse strings like: title="Four Seasons: L'autunno (Autumn) in F, Op. 8/3-Antonio Vivaldi"
-            const result = {};
-            
-            if (!metadataStr) return result;
-            
-            // Extract title from title="..." format
-            const titleMatch = metadataStr.match(/title="([^"]+)"/);
-            if (titleMatch) {
-                const fullTitle = titleMatch[1];
-                
-                // Try to split composer and piece (look for common patterns)
-                const patterns = [
-                    /^(.+?)-([^-]+)$/, // "Piece-Composer"
-                    /^(.+?) - ([^-]+)$/, // "Piece - Composer" 
-                    /^(.+?)\s*-\s*(.+)$/ // "Piece - Composer" with flexible spacing
-                ];
-                
-                let piece = fullTitle;
-                let composer = '';
-                
-                for (const pattern of patterns) {
-                    const match = fullTitle.match(pattern);
-                    if (match && match[2] && match[2].length > 2) {
-                        piece = match[1].trim();
-                        composer = match[2].trim();
-                        break;
-                    }
-                }
-                
-                result.title = piece;
-                if (composer) result.composer = composer;
-            }
-            
-            return result;
-        }
-
         function renderMetadata(data) {
             const container = document.getElementById('metadataContent');
-            
-            // The data is nested in metadataList
             const metadataList = data?.metadataList || [];
-            
+
             if (!metadataList || metadataList.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
                         <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 
+                            10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
                         </svg>
                         <h3>No metadata found</h3>
                         <p>No metadata entries were found for the past hour</p>
@@ -388,55 +307,12 @@
             }
 
             const html = metadataList.map(item => {
-                const parsedMetadata = parseMetadataString(item.metadata);
-                const timestamp = item.timestamp;
-                
-                let fields = '';
-                
-                if (parsedMetadata.title) {
-                    fields += `
-                        <div class="metadata-field">
-                            <strong>Title</strong>
-                            <span>${parsedMetadata.title}</span>
-                        </div>
-                    `;
-                }
-                
-                if (parsedMetadata.composer) {
-                    fields += `
-                        <div class="metadata-field">
-                            <strong>Composer</strong>
-                            <span>${parsedMetadata.composer}</span>
-                        </div>
-                    `;
-                }
-                
-                if (item.node) {
-                    fields += `
-                        <div class="metadata-field">
-                            <strong>Source</strong>
-                            <span>${item.node}</span>
-                        </div>
-                    `;
-                }
-                
-                if (item.mount) {
-                    fields += `
-                        <div class="metadata-field">
-                            <strong>Stream</strong>
-                            <span>${item.mount}</span>
-                        </div>
-                    `;
-                }
-
                 return `
                     <div class="metadata-item">
                         <div class="metadata-time">
-                            ${timestamp || 'Unknown time'}
+                            ${item.timestamp || 'Unknown time'}
                         </div>
-                        <div class="metadata-content">
-                            ${fields || '<div class="metadata-field"><strong>Raw</strong><span>' + (item.metadata || 'No data') + '</span></div>'}
-                        </div>
+                        <pre>${JSON.stringify(item, null, 2)}</pre>
                     </div>
                 `;
             }).join('');
@@ -457,7 +333,6 @@
                 const now = Math.floor(Date.now() / 1000);
                 const oneHourAgo = now - 3600;
                 
-                // Call our Vercel serverless function
                 const response = await fetch(`/api/metadata?start=${oneHourAgo}&stop=${now}`);
                 
                 if (!response.ok) {
@@ -471,7 +346,6 @@
                     throw new Error(result.error);
                 }
                 
-                // The data structure is result.data.metadataList
                 const count = result.data?.metadataList?.length || 0;
                 showStatus(`Successfully loaded ${count} metadata entries`, 'success');
                 renderMetadata(result.data);
@@ -490,8 +364,8 @@
             const checkbox = document.getElementById('autoRefresh');
             
             if (checkbox.checked) {
-                fetchMetadata(); // Initial fetch
-                autoRefreshInterval = setInterval(fetchMetadata, 30000); // Every 30 seconds
+                fetchMetadata();
+                autoRefreshInterval = setInterval(fetchMetadata, 30000);
                 showStatus('Auto-refresh enabled (every 30 seconds)', 'success');
                 setTimeout(hideStatus, 2000);
             } else {
@@ -504,10 +378,7 @@
             }
         }
 
-        // Initialize time info on page load
         updateTimeInfo();
-        
-        // Update time info every second
         setInterval(updateTimeInfo, 1000);
     </script>
 </body>
