@@ -2,45 +2,44 @@
 
 function parseMetadataString(metadataStr) {
   const result = {};
-  
   if (!metadataStr) return result;
-  
-  // Extract title from title="..." format and handle escaped quotes
+
+  // Extract title="..." section
   const titleMatch = metadataStr.match(/title="([^"]*(?:\\.[^"]*)*)"/);
-  if (titleMatch) {
-    let fullTitle = titleMatch[1];
-    
-    // Clean up escaped quotes
-    fullTitle = fullTitle.replace(/\\"/g, '"');
-    
-    // List of common composer patterns to help identify where to split
-    const composerPatterns = [
-      /(.+)-([A-Z][a-z]+(?:\s+van|\s+von|\s+de|\s+da|\s+del|\s+della)?\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)$/, // Classical
-      /(.+)-([A-Z][a-z]+(?:\s+[A-Z][a-z]*)*(?:\s+[A-Z][a-z]+)*)$/, // Generic names
-      /(.+)-([A-Z][a-z]{2,}.*)$/ // Fallback
-    ];
-    
-    let piece = fullTitle;
-    let composer = '';
-    
-    for (const pattern of composerPatterns) {
-      const match = fullTitle.match(pattern);
-      if (match && match[2]) {
-        const potentialComposer = match[2].trim();
-        if (potentialComposer.includes(' ') || potentialComposer.match(/^[A-Z][a-z]+$/)) {
-          piece = match[1].trim();
-          composer = potentialComposer;
-          break;
-        }
+  if (!titleMatch) return result;
+
+  let fullTitle = titleMatch[1];
+
+  // Step 1: Decode escaped sequences (turn \" into ", \\ into \)
+  fullTitle = fullTitle.replace(/\\+"/g, '"').replace(/\\\\/g, '\\');
+
+  // Step 2: Patterns to split piece vs composer
+  const composerPatterns = [
+    /(.+)-([A-Z][a-z]+(?:\s+van|\s+von|\s+de|\s+da|\s+del|\s+della)?\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)$/,
+    /(.+)-([A-Z][a-z]+(?:\s+[A-Z][a-z]*)*(?:\s+[A-Z][a-z]+)*)$/,
+    /(.+)-([A-Z][a-z]{2,}.*)$/
+  ];
+
+  let piece = fullTitle;
+  let composer = '';
+
+  for (const pattern of composerPatterns) {
+    const match = fullTitle.match(pattern);
+    if (match && match[2]) {
+      const potentialComposer = match[2].trim();
+      if (potentialComposer.includes(' ') || /^[A-Z][a-z]+$/.test(potentialComposer)) {
+        piece = match[1].trim();
+        composer = potentialComposer;
+        break;
       }
     }
-    
-    result.title = piece;
-    if (composer && composer.length > 2) {
-      result.composer = composer;
-    }
   }
-  
+
+  result.title = piece;
+  if (composer && composer.length > 2) {
+    result.composer = composer;
+  }
+
   return result;
 }
 
