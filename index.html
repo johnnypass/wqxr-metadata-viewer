@@ -64,6 +64,14 @@
       color: #d32f2f;
       margin-top: 10px;
     }
+    label {
+      margin: 0 5px;
+    }
+    input[type="text"] {
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
   </style>
 </head>
 <body>
@@ -74,38 +82,81 @@
     <label>
       <input type="checkbox" id="autoRefresh"> Auto-refresh every 30s
     </label>
+    <label>Start Time (UTC): 
+      <input type="text" id="startTime" placeholder="2025-09-18T15:00:00Z">
+    </label>
+    <label>Stop Time (UTC): 
+      <input type="text" id="stopTime" placeholder="2025-09-18T19:00:00Z">
+    </label>
   </div>
 
   <div id="results"></div>
   <div id="debug" class="debug"></div>
 
   <script>
+    function toEpochSeconds(dateStr) {
+      const date = new Date(dateStr);
+      return isNaN(date) ? null : Math.floor(date.getTime() / 1000);
+    }
+
     async function fetchMetadata() {
       const debugDiv = document.getElementById("debug");
       debugDiv.textContent = "Fetching metadata...";
+
+      const startTimeInput = document.getElementById("startTime").value;
+      const stopTimeInput = document.getElementById("stopTime").value;
+
+      const startTime = toEpochSeconds(startTimeInput) || Math.floor(Date.now() / 1000) - 3600; // Default 1 hour ago
+      const stopTime = toEpochSeconds(stopTimeInput) || Math.floor(Date.now() / 1000); // Default now
+
+      // Validate 72-hour limit (259,200 seconds)
+      const duration = stopTime - startTime;
+      if (duration > 259200) {
+        debugDiv.textContent = "Error: Time interval exceeds 72-hour limit";
+        return;
+      }
+      if (startTime > stopTime) {
+        debugDiv.textContent = "Error: Start time must be before stop time";
+        return;
+      }
+
+      const url = `/api/metadata?start=${startTime}&stop=${stopTime}`;
+      console.log("Fetching from URL:", url);
+
       try {
-        const res = await fetch("/api/metadata");
+        const res = await fetch(url);
         if (!res.ok) {
           throw new Error(`HTTP error! status: ${res.status}`);
         }
         const data = await res.json();
-        console.log("Received data:", data);
+        console.log("Full received data:", data);
 
         const container = document.getElementById("results");
         container.innerHTML = "";
 
-        if (!data || typeof data !== 'object' || !('stations' in data)) {
+        let stations;
+        if ('metadataList' in data) {
+          stations = {
+            "TuneIn test": {
+              success: true,
+              metadataList: data.metadataList
+            }
+          };
+        } else if ('stations' in data) {
+          stations = data.stations;
+        } else {
           debugDiv.textContent = "Error: Unexpected data format";
+          console.log("Data structure issue:", data);
           return;
         }
 
-        for (const [station, result] of Object.entries(data.stations)) {
+        for (const [station, result] of Object.entries(stations)) {
           const stationDiv = document.createElement("div");
           stationDiv.className = "station";
           stationDiv.onclick = () => stationDiv.classList.toggle("active");
           stationDiv.innerHTML = `<h2>${station}</h2>`;
 
-          if (result && 'success' in result && result.success && Array.isArray(result.metadataList) && result.metadataList.length > 0) {
+          if (result && result.success && Array.isArray(result.metadataList) && result.metadataList.length > 0) {
             result.metadataList.forEach((item) => {
               const itemDiv = document.createElement("div");
               itemDiv.className = "metadata-item";
@@ -117,6 +168,9 @@
             emptyMsg.className = "empty";
             emptyMsg.textContent = `No metadata found for ${station}`;
             stationDiv.appendChild(emptyMsg);
+            if (station === "TuneIn test") {
+              console.log(`TuneIn test result:`, result);
+            }
           }
 
           container.appendChild(stationDiv);
@@ -132,7 +186,7 @@
 
     // Auto-refresh
     const autoRefreshCheckbox = document.getElementById("autoRefresh");
-    let intervalId = null; // Explicitly initialize to null
+    let intervalId = null;
     if (!autoRefreshCheckbox) {
       console.error("Auto-refresh checkbox not found!");
     } else {
@@ -140,7 +194,7 @@
         const debugDiv = document.getElementById("debug");
         console.log("Auto-refresh checkbox changed to:", e.target.checked);
         if (e.target.checked) {
-          if (intervalId) clearInterval(intervalId); // Clear any existing interval
+          if (intervalId) clearInterval(intervalId);
           intervalId = setInterval(() => {
             console.log("Auto-refresh triggered at", new Date().toLocaleTimeString());
             fetchMetadata();
