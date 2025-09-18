@@ -33,7 +33,7 @@ module.exports = async function handler(req, res) {
     // Stations to fetch
     const stations = [
       { id: 'wqxr', name: 'WQXR' },
-      { id: 'wnyc', name: 'WNYC' },
+      { id: 'wnycfm', name: 'WNYC' },
       { id: 'tunein-test', name: 'TuneIn Test' }
     ];
 
