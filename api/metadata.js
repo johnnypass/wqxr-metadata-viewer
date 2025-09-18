@@ -1,52 +1,4 @@
-// api/metadata.js - Vercel Serverless Functions (Uses built-in fetch)
-
-function parseMetadataString(metadataStr) {
-  const result = {};
-  if (!metadataStr) return result;
-
-  // Extract title="..." section
-  const titleMatch = metadataStr.match(/title="([^"]*(?:\\.[^"]*)*)"/);
-  if (!titleMatch) return result;
-
-  let fullTitle = titleMatch[1];
-
-  // 🔑 Step 1: Normalize escaped sequences
-  // Convert \" -> " and \\ -> \
-  fullTitle = fullTitle.replace(/\\\\/g, '\\').replace(/\\"/g, '"');
-
-  // 🔑 Step 2: Trim trailing slashes or artifacts
-  fullTitle = fullTitle.replace(/\\$/g, '').trim();
-
-  // Step 3: Split into piece + composer
-  const composerPatterns = [
-    /(.+)-([A-Z][a-z]+(?:\s+van|\s+von|\s+de|\s+da|\s+del|\s+della)?\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)$/,
-    /(.+)-([A-Z][a-z]+(?:\s+[A-Z][a-z]*)*(?:\s+[A-Z][a-z]+)*)$/,
-    /(.+)-([A-Z][a-z]{2,}.*)$/
-  ];
-
-  let piece = fullTitle;
-  let composer = '';
-
-  for (const pattern of composerPatterns) {
-    const match = fullTitle.match(pattern);
-    if (match && match[2]) {
-      const potentialComposer = match[2].trim();
-      if (potentialComposer.includes(' ') || /^[A-Z][a-z]+$/.test(potentialComposer)) {
-        piece = match[1].trim();
-        composer = potentialComposer;
-        break;
-      }
-    }
-  }
-
-  result.title = piece;
-  if (composer && composer.length > 2) {
-    result.composer = composer;
-  }
-
-  return result;
-}
-
+// api/metadata.js
 
 module.exports = async function handler(req, res) {
   // Enable CORS
@@ -94,20 +46,12 @@ module.exports = async function handler(req, res) {
     }
 
     const data = await response.json();
+    const count = Array.isArray(data) ? data.length : (data ? 1 : 0);
 
-    // 🔎 Enhance with parsed metadata
-    const parsedData = Array.isArray(data)
-      ? data.map(item => ({
-          ...item,
-          parsed: parseMetadataString(item.metadataString || item.metadata || '')
-        }))
-      : data;
-
-    const count = Array.isArray(parsedData) ? parsedData.length : (parsedData ? 1 : 0);
-
+    // 🚀 Return the raw JSON, pretty-printed
     return res.status(200).json({
       success: true,
-      data: parsedData,
+      data: data, // keep raw
       metadata: {
         start: startTime,
         stop: stopTime,
